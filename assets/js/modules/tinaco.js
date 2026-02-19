@@ -12,12 +12,9 @@ export function renderTinaco() {
         <div class="h5 fw-semibold mb-1"><i class="bi bi-water"></i> Tinacos</div>
         <div class="text-secondary">Control y simulación de nivel por dispositivo.</div>
       </div>
-
-      <div class="d-flex gap-2">
-        <button class="btn btn-light btn-sm" id="btnAddTinaco">
-          <i class="bi bi-plus-circle"></i> Agregar Tinaco
-        </button>
-      </div>
+      <button class="btn btn-light btn-sm" id="btnAddTinaco">
+        <i class="bi bi-plus-circle"></i> Agregar Tinaco
+      </button>
     </div>
 
     <div class="row g-3">
@@ -101,6 +98,7 @@ function cardTinaco(t) {
               </button>
             </div>
           </div>
+
         </div>
       </div>
     </div>
@@ -133,15 +131,18 @@ async function onClickAction(e) {
     if (action === "fillOn") {
       await patchTinaco(id, { Llenado: true });
       window.__toast?.(`Tinaco #${id}: Llenar ✅`);
+      window.__sim?.startTinacoFill(id);
       await window.__reload?.();
+      return;
     }
 
     if (action === "fillOff") {
       await patchTinaco(id, { Llenado: false });
       window.__toast?.(`Tinaco #${id}: Detener ✅`);
+      window.__sim?.stopTinacoFill(id);
       await window.__reload?.();
+      return;
     }
-
   } catch (err) {
     console.error(err);
     window.__toast?.("Error en Tinaco ❌");

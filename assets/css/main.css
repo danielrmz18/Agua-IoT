@@ -1,14 +1,11 @@
 :root{
-  --bg0:#1a64a0;
+  --bg0:#061a2a;
   --bg1:#052338;
   --card: rgba(255,255,255,.08);
   --border: rgba(255,255,255,.14);
-  --text:#eaf6ff00;
+  --text:#eaf6ff;
   --muted: rgba(234,246,255,.68);
-  --water: rgba(75, 180, 245, 0.65);
-}
-.text-secondary{
-  color: #f9fdffe5 !important;
+  --water: rgba(99, 196, 255, .65);
 }
 
 body{
@@ -68,7 +65,7 @@ body{
 .footer-bar{
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  background: rgba(240, 238, 238, 0.28);
+  background: rgba(0,0,0,.28);
   backdrop-filter: blur(10px);
   border-top: 1px solid rgba(255,255,255,.12);
 }

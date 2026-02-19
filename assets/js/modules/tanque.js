@@ -12,12 +12,9 @@ export function renderTanque() {
         <div class="h5 fw-semibold mb-1"><i class="bi bi-toilet"></i> Tanques WC</div>
         <div class="text-secondary">Bloqueo de descarga y detección de fuga.</div>
       </div>
-
-      <div class="d-flex gap-2">
-        <button class="btn btn-light btn-sm" id="btnAddTanque">
-          <i class="bi bi-plus-circle"></i> Agregar Tanque
-        </button>
-      </div>
+      <button class="btn btn-light btn-sm" id="btnAddTanque">
+        <i class="bi bi-plus-circle"></i> Agregar Tanque
+      </button>
     </div>
 
     <div class="row g-3">
@@ -47,8 +44,9 @@ export function renderTanque() {
 function cardTanque(b) {
   const id = b.id;
   const nombre = b.name ?? "Tanque WC";
+  const field = ("nivelTanquePorcentaj" in b) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
+  const nivel = clamp(b[field] ?? 0, 0, 100);
 
-  const nivel = clamp(b.nivelTanquePorcentaj ?? b.nivelTanquePorcentaje ?? 0, 0, 100);
   const bloqueada = toBool(b.descargaBloqueada ?? false);
   const fuga = toBool(b.fugaDetectada ?? false);
 
@@ -135,13 +133,36 @@ async function onClickAction(e) {
       return;
     }
 
-    if (action === "lock") await patchTanque(id, { descargaBloqueada: true });
-    if (action === "unlock") await patchTanque(id, { descargaBloqueada: false });
-    if (action === "leakOn") await patchTanque(id, { fugaDetectada: true });
-    if (action === "leakOff") await patchTanque(id, { fugaDetectada: false });
+    if (action === "lock") {
+      await patchTanque(id, { descargaBloqueada: true });
+      window.__sim?.startTanqueFill(id);
+      window.__toast?.("Bloqueada: llenando tanque ✅");
+      await window.__reload?.();
+      return;
+    }
 
-    window.__toast?.("Tanque actualizado ✅");
-    await window.__reload?.();
+    if (action === "unlock") {
+      const field = ("nivelTanquePorcentaj" in current) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
+      await patchTanque(id, { descargaBloqueada: false, [field]: 0 });
+      window.__sim?.stopTanqueFill(id);
+      window.__toast?.("Desbloqueada: tanque vacío ✅");
+      await window.__reload?.();
+      return;
+    }
+
+    if (action === "leakOn") {
+      await patchTanque(id, { fugaDetectada: true });
+      window.__toast?.("Fuga activada ⚠️");
+      await window.__reload?.();
+      return;
+    }
+
+    if (action === "leakOff") {
+      await patchTanque(id, { fugaDetectada: false });
+      window.__toast?.("Fuga desactivada ✅");
+      await window.__reload?.();
+      return;
+    }
 
   } catch (err) {
     console.error(err);
