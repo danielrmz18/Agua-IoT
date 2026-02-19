@@ -1,4 +1,4 @@
-import { ENDPOINTS, updateById } from "../api.js";
+import { ENDPOINTS, updateById, deleteById } from "../api.js";
 import { clamp, fmtDate, nowIso, toBool, escapeHtml } from "../utils.js";
 import { store } from "../store.js";
 
@@ -6,29 +6,38 @@ export function renderTinaco() {
   const el = document.getElementById("view-tinaco");
   const items = Array.isArray(store.tinacos) ? store.tinacos : [];
 
-  if (!items.length) {
-    el.innerHTML = `
-      <div class="card border-0 shadow-sm">
-        <div class="card-body p-4 text-secondary">
-          No hay registros en <b>Tinaco</b>. Genera datos en MockAPI.
-        </div>
-      </div>`;
-    return;
-  }
-
   el.innerHTML = `
     <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
       <div>
         <div class="h5 fw-semibold mb-1"><i class="bi bi-water"></i> Tinacos</div>
         <div class="text-secondary">Control y simulación de nivel por dispositivo.</div>
       </div>
-      <div class="small text-secondary">Total: <b>${items.length}</b></div>
+
+      <div class="d-flex gap-2">
+        <button class="btn btn-light btn-sm" id="btnAddTinaco">
+          <i class="bi bi-plus-circle"></i> Agregar Tinaco
+        </button>
+      </div>
     </div>
 
     <div class="row g-3">
-      ${items.map(cardTinaco).join("")}
+      ${
+        items.length
+          ? items.map(cardTinaco).join("")
+          : `<div class="col-12">
+               <div class="card border-0 shadow-sm">
+                 <div class="card-body p-4 text-secondary">
+                   No hay registros en <b>Tinaco</b>. Agrega uno con el botón.
+                 </div>
+               </div>
+             </div>`
+      }
     </div>
   `;
+
+  document.getElementById("btnAddTinaco").addEventListener("click", () => {
+    window.__openCrud?.("tinaco", "create");
+  });
 
   el.querySelectorAll("[data-action]").forEach(btn => {
     btn.addEventListener("click", onClickAction);
@@ -55,6 +64,7 @@ function cardTinaco(t) {
               </div>
               <div class="text-secondary small">Actualizado: ${escapeHtml(fmtDate(t.ActualizadoEn))}</div>
             </div>
+
             <div class="text-end">
               <span class="badge rounded-pill ${low ? "text-bg-warning" : "text-bg-success"}">
                 ${low ? "Nivel bajo" : "OK"}
@@ -75,34 +85,21 @@ function cardTinaco(t) {
           <div class="gauge mb-3"><div style="width:${nivel}%"></div></div>
 
           <div class="d-flex flex-wrap gap-2 mb-3">
-            <button class="btn btn-light btn-sm" data-action="fillOn" data-id="${escapeHtml(id)}">
+            <button class="btn btn-outline-light btn-sm" data-action="fillOn" data-id="${escapeHtml(id)}">
               <i class="bi bi-play-circle"></i> Llenar
             </button>
             <button class="btn btn-outline-light btn-sm" data-action="fillOff" data-id="${escapeHtml(id)}">
               <i class="bi bi-stop-circle"></i> Detener
             </button>
-          </div>
 
-          <div class="row g-2 align-items-end">
-            <div class="col-6">
-              <label class="form-label small text-secondary mb-1">Umbral bajo (%)</label>
-              <input class="form-control form-control-sm" type="number" min="0" max="100"
-                value="${umbral}" data-field="UmbralBajo" data-id="${escapeHtml(id)}">
-            </div>
-            <div class="col-6">
-              <label class="form-label small text-secondary mb-1">Nivel actual (%)</label>
-              <input class="form-control form-control-sm" type="number" min="0" max="100"
-                value="${nivel}" data-field="NivelPorcentaje" data-id="${escapeHtml(id)}">
-            </div>
-            <div class="col-12">
-              <button class="btn btn-outline-light btn-sm w-100" data-action="save" data-id="${escapeHtml(id)}">
-                <i class="bi bi-save2"></i> Guardar cambios
+            <div class="ms-auto d-flex gap-2">
+              <button class="btn btn-light btn-sm" data-action="edit" data-id="${escapeHtml(id)}">
+                <i class="bi bi-pencil-square"></i> Modificar
+              </button>
+              <button class="btn btn-outline-danger btn-sm" data-action="delete" data-id="${escapeHtml(id)}">
+                <i class="bi bi-trash3"></i>
               </button>
             </div>
-          </div>
-
-          <div class="mt-3 small text-secondary">
-            *NivelPorcentaje = sensor, Llenado = bomba/válvula.
           </div>
         </div>
       </div>
@@ -119,31 +116,35 @@ async function onClickAction(e) {
   if (!current) return;
 
   try {
+    if (action === "edit") {
+      window.__openCrud?.("tinaco", "edit", current);
+      return;
+    }
+
+    if (action === "delete") {
+      const ok = confirm(`¿Eliminar Tinaco #${id}?`);
+      if (!ok) return;
+      await deleteById(ENDPOINTS.tinaco, id);
+      window.__toast?.("Eliminado ✅");
+      await window.__reload?.();
+      return;
+    }
+
     if (action === "fillOn") {
       await patchTinaco(id, { Llenado: true });
       window.__toast?.(`Tinaco #${id}: Llenar ✅`);
+      await window.__reload?.();
     }
 
     if (action === "fillOff") {
       await patchTinaco(id, { Llenado: false });
       window.__toast?.(`Tinaco #${id}: Detener ✅`);
+      await window.__reload?.();
     }
 
-    if (action === "save") {
-      const umbralInput = document.querySelector(`input[data-id="${id}"][data-field="UmbralBajo"]`);
-      const nivelInput = document.querySelector(`input[data-id="${id}"][data-field="NivelPorcentaje"]`);
-
-      const UmbralBajo = clamp(umbralInput?.value ?? current.UmbralBajo ?? 25, 0, 100);
-      const NivelPorcentaje = clamp(nivelInput?.value ?? current.NivelPorcentaje ?? 0, 0, 100);
-
-      await patchTinaco(id, { UmbralBajo, NivelPorcentaje });
-      window.__toast?.(`Tinaco #${id}: Guardado ✅`);
-    }
-
-    await window.__reload?.();
   } catch (err) {
     console.error(err);
-    window.__toast?.("Error al actualizar Tinaco ❌");
+    window.__toast?.("Error en Tinaco ❌");
   }
 }
 

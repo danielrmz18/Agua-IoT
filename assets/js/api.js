@@ -19,11 +19,22 @@ export async function getAll(resourceUrl) {
   return Array.isArray(data) ? data : [];
 }
 
+export async function createItem(resourceUrl, payload) {
+  return await apiRequest(resourceUrl, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export async function updateById(resourceUrl, id, payload) {
   return await apiRequest(`${resourceUrl}/${id}`, {
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+export async function deleteById(resourceUrl, id) {
+  return await apiRequest(`${resourceUrl}/${id}`, { method: "DELETE" });
 }
 
 export { ENDPOINTS };

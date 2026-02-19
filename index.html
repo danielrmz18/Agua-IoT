@@ -96,6 +96,39 @@
     </div>
   </div>
 
+  <!-- Modal CRUD (reutilizable para Tinaco y Tanque) -->
+<div class="modal fade" id="crudModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered modal-lg">
+    <div class="modal-content bg-dark text-light border border-light border-opacity-10">
+      <div class="modal-header border-bottom border-light border-opacity-10">
+        <h5 class="modal-title" id="crudModalTitle">Editar</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+      </div>
+
+      <form id="crudForm">
+        <div class="modal-body">
+          <input type="hidden" id="crudResource" />
+          <input type="hidden" id="crudId" />
+
+          <!-- Contenedor dinámico -->
+          <div class="row g-3" id="crudFields"></div>
+
+          <div class="small text-secondary mt-3" id="crudHelp">
+            *Campos ajustados al recurso seleccionado.
+          </div>
+        </div>
+
+        <div class="modal-footer border-top border-light border-opacity-10">
+          <button type="button" class="btn btn-outline-light" data-bs-dismiss="modal">Cancelar</button>
+          <button type="submit" class="btn btn-light">
+            <i class="bi bi-save2"></i> Guardar
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
   <footer class="footer-bar">
     <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
       <div class="small text-secondary-emphasis">
