@@ -365,4 +365,41 @@ window.__sim = {
 },
 
 stopTanqueLeak: (id) => stopInterval(sim.tanque, `leak-${id}`),
+
+startTinacoDrainByTanque: (tanqueId, tinacoId) => {
+  startInterval(sim.tinaco, `drain-${tanqueId}`, async () => {
+    const tin = store.tinacos.find(x => String(x.id) === String(tinacoId));
+    const tan = store.tanques.find(x => String(x.id) === String(tanqueId));
+    if (!tin || !tan) return stopInterval(sim.tinaco, `drain-${tanqueId}`);
+
+    // si el tanque ya no está vacío, detenemos el drenaje
+    const field = ("nivelTanquePorcentaj" in tan) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
+    const tanqueNivel = clamp(tan[field] ?? 0, 0, 100);
+    if (tanqueNivel > 0) return stopInterval(sim.tinaco, `drain-${tanqueId}`);
+
+    let nivelTinaco = clamp(tin.NivelPorcentaje ?? 0, 0, 100);
+    if (nivelTinaco <= 0) return stopInterval(sim.tinaco, `drain-${tanqueId}`);
+
+    // velocidad de consumo (ajústala)
+    nivelTinaco = clamp(nivelTinaco - 1, 0, 100);
+
+    const payload = { ...tin, NivelPorcentaje: nivelTinaco, ActualizadoEn: nowIso() };
+
+    try {
+      await updateById(ENDPOINTS.tinaco, tinacoId, payload);
+      tin.NivelPorcentaje = payload.NivelPorcentaje;
+      tin.ActualizadoEn = payload.ActualizadoEn;
+
+      renderCurrent();
+      countAlerts();
+
+      if (nivelTinaco <= 0) stopInterval(sim.tinaco, `drain-${tanqueId}`);
+    } catch (e) {
+      console.error(e);
+      stopInterval(sim.tinaco, `drain-${tanqueId}`);
+    }
+  }, 900);
+},
+
+stopTinacoDrainByTanque: (tanqueId) => stopInterval(sim.tinaco, `drain-${tanqueId}`),
 };

@@ -133,13 +133,23 @@ async function onClickAction(e) {
       return;
     }
 
-    if (action === "lock") {
-      await patchTanque(id, { descargaBloqueada: true });
-      window.__sim?.startTanqueFill(id);
-      window.__toast?.("Bloqueada: llenando tanque ✅");
-      await window.__reload?.();
-      return;
-    }
+ if (action === "lock") {
+  // 1️⃣ Apagar fuga
+  await patchTanque(id, {
+    descargaBloqueada: true,
+    fugaDetectada: false
+  });
+
+  // 2️⃣ Detener fuga si estaba corriendo
+  window.__sim?.stopTanqueLeak(id);
+
+  // 3️⃣ Empezar llenado
+  window.__sim?.startTanqueFill(id);
+
+  window.__toast?.("Fuga sellada 🔒 y tanque llenándose 💧");
+  await window.__reload?.();
+  return;
+}
 
     if (action === "unlock") {
       const field = ("nivelTanquePorcentaj" in current) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
