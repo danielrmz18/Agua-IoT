@@ -3,7 +3,9 @@ import { store } from "./store.js";
 import { currentView, showView } from "./router.js";
 import { renderTinaco } from "./modules/tinaco.js";
 import { renderTanque } from "./modules/tanque.js";
+import { renderMonitor } from "./modules/monitor.js";
 import { clamp, toBool, nowIso, escapeHtml } from "./utils.js";
+import { addSnapshot } from "./history.js";
 
 // ===== DOM =====
 const statApi = document.getElementById("statApi");
@@ -54,8 +56,10 @@ function countAlerts() {
 function renderCurrent() {
   const view = currentView();
   showView(view);
+
   if (view === "tinaco") renderTinaco();
   if (view === "tanque") renderTanque();
+  if (view === "monitor") renderMonitor();
 }
 
 // ===== Reload =====
@@ -72,6 +76,9 @@ window.__reload = async function reload() {
     store.tanques = tanques;
     store.lastLoad = new Date();
 
+    // ✅ Guardar historial local (últimos 10)
+    addSnapshot(store.tinacos, store.tanques);
+
     statLast.textContent = store.lastLoad.toLocaleTimeString();
     setApiBadge("OK", "success");
 
@@ -85,9 +92,33 @@ window.__reload = async function reload() {
 };
 
 btnReload.addEventListener("click", window.__reload);
-window.addEventListener("hashchange", renderCurrent);
+
+// ===== Refresh 2s SOLO en monitor =====
+let monitorTimer = null;
+
+function setMonitorTimer() {
+  const view = currentView();
+  if (view === "monitor") {
+    if (!monitorTimer) {
+      monitorTimer = setInterval(() => {
+        window.__reload();
+      }, 2000);
+    }
+  } else {
+    if (monitorTimer) {
+      clearInterval(monitorTimer);
+      monitorTimer = null;
+    }
+  }
+}
+
+window.addEventListener("hashchange", () => {
+  setMonitorTimer();
+  renderCurrent();
+});
 
 if (!location.hash) location.hash = "#tinaco";
+setMonitorTimer();
 window.__reload();
 
 // ===== Modal builder =====
@@ -229,18 +260,14 @@ function payloadTanqueFromForm() {
   return { name, nivelTanquePorcentaj, descargaBloqueada, fugaDetectada };
 }
 
-// ===== Simulación (intervalos por dispositivo) =====
-const sim = {
-  tinaco: new Map(), // id -> intervalId
-  tanque: new Map(),
-};
+// ===== Simulación (lo que ya tenías) =====
+const sim = { tinaco: new Map(), tanque: new Map() };
 
 function stopInterval(map, id) {
   const t = map.get(String(id));
   if (t) clearInterval(t);
   map.delete(String(id));
 }
-
 function startInterval(map, id, fn, ms = 900) {
   stopInterval(map, id);
   const t = setInterval(fn, ms);
@@ -248,7 +275,6 @@ function startInterval(map, id, fn, ms = 900) {
 }
 
 window.__sim = {
-  // Tinaco: subir nivel mientras Llenado = true
   startTinacoFill: (id) => {
     startInterval(sim.tinaco, id, async () => {
       const cur = store.tinacos.find(x => String(x.id) === String(id));
@@ -277,10 +303,8 @@ window.__sim = {
       }
     }, 900);
   },
-
   stopTinacoFill: (id) => stopInterval(sim.tinaco, id),
 
-  // Tanque: si está bloqueado, sube nivel
   startTanqueFill: (id) => {
     startInterval(sim.tanque, id, async () => {
       const cur = store.tanques.find(x => String(x.id) === String(id));
@@ -308,6 +332,5 @@ window.__sim = {
       }
     }, 900);
   },
-
   stopTanqueFill: (id) => stopInterval(sim.tanque, id),
 };

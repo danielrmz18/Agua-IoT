@@ -65,7 +65,7 @@ body{
 .footer-bar{
   position: fixed;
   left: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,.28);
+  background: rgba(187, 189, 192, 0.911);
   backdrop-filter: blur(10px);
-  border-top: 1px solid rgba(255,255,255,.12);
+  border-top: 1px solid rgba(255, 255, 255, 0.699);
 }

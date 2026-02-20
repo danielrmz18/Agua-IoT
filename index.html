@@ -34,9 +34,14 @@
           <a class="btn btn-outline-light btn-sm" href="#tinaco" data-nav="tinaco">
             <i class="bi bi-water"></i> Tinaco
           </a>
+          
           <a class="btn btn-outline-light btn-sm" href="#tanque" data-nav="tanque">
             <i class="bi bi-toilet"></i> Tanque WC
           </a>
+
+          <a class="btn btn-outline-light btn-sm" href="#monitor" data-nav="monitor">
+             <i class="bi bi-graph-up"></i> Monitoreo
+            </a>
         </div>
 
         <div class="vr d-none d-md-block mx-1"></div>
@@ -84,6 +89,7 @@
 
     <section id="view-tinaco" class="view"></section>
     <section id="view-tanque" class="view d-none"></section>
+    <section id="view-monitor" class="view d-none"></section>
   </main>
 
   <!-- Modal CRUD (reutilizable) -->
@@ -129,7 +135,7 @@
   <footer class="footer-bar">
     <div class="container d-flex flex-wrap justify-content-between align-items-center gap-2 py-2">
       <div class="small text-secondary-emphasis">
-        © <span id="year"></span> Agua IoT · Proyecto académico
+        © <span id="year"></span> Agua IoT · Daniel Sabas Ramirez Butron
       </div>
       <div class="small text-secondary-emphasis">
         Hecho con <i class="bi bi-bootstrap"></i> Bootstrap + JS (Fetch/Async)
@@ -138,6 +144,7 @@
   </footer>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
   <script type="module" src="assets/js/app.js"></script>
 </body>
 </html>
