@@ -151,19 +151,19 @@ async function onClickAction(e) {
     }
 
     if (action === "leakOn") {
-      await patchTanque(id, { fugaDetectada: true });
-      window.__toast?.("Fuga activada ⚠️");
-      await window.__reload?.();
-      return;
-    }
-
-    if (action === "leakOff") {
-      await patchTanque(id, { fugaDetectada: false });
-      window.__toast?.("Fuga desactivada ✅");
-      await window.__reload?.();
-      return;
-    }
-
+  await patchTanque(id, { fugaDetectada: true });
+  window.__sim?.startTanqueLeak(id); // ✅ empieza a bajar
+  window.__toast?.("Fuga activada ⚠️ (bajando nivel)");
+  await window.__reload?.();
+  return;
+}
+if (action === "leakOff") {
+  await patchTanque(id, { fugaDetectada: false });
+  window.__sim?.stopTanqueLeak(id); // ✅ deja de bajar
+  window.__toast?.("Fuga desactivada ✅");
+  await window.__reload?.();
+  return;
+}
   } catch (err) {
     console.error(err);
     window.__toast?.("Error en Tanque ❌");

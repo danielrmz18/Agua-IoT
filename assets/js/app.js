@@ -333,4 +333,36 @@ window.__sim = {
     }, 900);
   },
   stopTanqueFill: (id) => stopInterval(sim.tanque, id),
+  // Deteccion de fuga baja el nivel de la barra
+  startTanqueLeak: (id) => {
+  startInterval(sim.tanque, `leak-${id}`, async () => {
+    const cur = store.tanques.find(x => String(x.id) === String(id));
+    if (!cur) return stopInterval(sim.tanque, `leak-${id}`);
+    if (!cur.fugaDetectada) return stopInterval(sim.tanque, `leak-${id}`);
+
+    const field = ("nivelTanquePorcentaj" in cur) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
+    let nivel = clamp(cur[field] ?? 0, 0, 100);
+
+    // baja por fuga (ajusta 1,2,3 a tu gusto)
+    nivel = clamp(nivel - 2, 0, 100);
+
+    const payload = { ...cur, [field]: nivel, actualizadoEn: nowIso() };
+
+    try {
+      await updateById(ENDPOINTS.tanque, id, payload);
+      cur[field] = payload[field];
+      cur.actualizadoEn = payload.actualizadoEn;
+
+      renderCurrent();
+      countAlerts();
+
+      if (nivel <= 0) stopInterval(sim.tanque, `leak-${id}`);
+    } catch (e) {
+      console.error(e);
+      stopInterval(sim.tanque, `leak-${id}`);
+    }
+  }, 900);
+},
+
+stopTanqueLeak: (id) => stopInterval(sim.tanque, `leak-${id}`),
 };
