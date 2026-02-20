@@ -12,18 +12,26 @@ const statApi = document.getElementById("statApi");
 const statLast = document.getElementById("statLast");
 const statAlerts = document.getElementById("statAlerts");
 const btnReload = document.getElementById("btnReload");
+const btnSimular = document.getElementById("btnSimular");
 
-document.getElementById("year").textContent = String(new Date().getFullYear());
+// Footer year
+const yearEl = document.getElementById("year");
+if (yearEl) yearEl.textContent = String(new Date().getFullYear());
 
 // ===== Toast =====
 const toastEl = document.getElementById("appToast");
 const toastMsg = document.getElementById("toastMsg");
-const toast = new bootstrap.Toast(toastEl, { delay: 2400 });
-window.__toast = (msg) => { toastMsg.textContent = msg; toast.show(); };
+const toast = toastEl ? new bootstrap.Toast(toastEl, { delay: 2400 }) : null;
+
+window.__toast = (msg) => {
+  if (!toast || !toastMsg) return;
+  toastMsg.textContent = msg;
+  toast.show();
+};
 
 // ===== Modal CRUD =====
 const crudModalEl = document.getElementById("crudModal");
-const crudModal = new bootstrap.Modal(crudModalEl);
+const crudModal = crudModalEl ? new bootstrap.Modal(crudModalEl) : null;
 const crudForm = document.getElementById("crudForm");
 const crudFields = document.getElementById("crudFields");
 const crudTitle = document.getElementById("crudModalTitle");
@@ -31,9 +39,11 @@ const crudResource = document.getElementById("crudResource");
 const crudId = document.getElementById("crudId");
 
 window.__openCrud = openCrudModal;
-window.__closeCrud = () => crudModal.hide();
+window.__closeCrud = () => crudModal?.hide();
 
-function setApiBadge(text, type="secondary") {
+// ===== Helpers =====
+function setApiBadge(text, type = "secondary") {
+  if (!statApi) return;
   statApi.innerHTML = `<span class="badge rounded-pill text-bg-${type}">${text}</span>`;
 }
 
@@ -50,7 +60,7 @@ function countAlerts() {
     if (toBool(b.fugaDetectada ?? false)) c++;
   }
 
-  statAlerts.textContent = String(c);
+  if (statAlerts) statAlerts.textContent = String(c);
 }
 
 function renderCurrent() {
@@ -72,14 +82,14 @@ window.__reload = async function reload() {
       getAll(ENDPOINTS.tanque),
     ]);
 
-    store.tinacos = tinacos;
-    store.tanques = tanques;
+    store.tinacos = Array.isArray(tinacos) ? tinacos : [];
+    store.tanques = Array.isArray(tanques) ? tanques : [];
     store.lastLoad = new Date();
 
-    // ✅ Guardar historial local (últimos 10)
+    // ✅ Guardar historial local (últimos 10) para gráficas/tablas
     addSnapshot(store.tinacos, store.tanques);
 
-    statLast.textContent = store.lastLoad.toLocaleTimeString();
+    if (statLast) statLast.textContent = store.lastLoad.toLocaleTimeString();
     setApiBadge("OK", "success");
 
     countAlerts();
@@ -87,11 +97,11 @@ window.__reload = async function reload() {
   } catch (e) {
     console.error(e);
     setApiBadge("Error", "danger");
-    window.__toast("Error al leer la API ❌");
+    window.__toast?.("Error al leer la API ❌");
   }
 };
 
-btnReload.addEventListener("click", window.__reload);
+btnReload?.addEventListener("click", window.__reload);
 
 // ===== Refresh 2s SOLO en monitor =====
 let monitorTimer = null;
@@ -130,6 +140,8 @@ function makeCol(html) {
 }
 
 function openCrudModal(resourceKey, mode, item = null) {
+  if (!crudModal) return;
+
   crudResource.value = resourceKey; // tinaco | tanque
   crudId.value = item?.id ?? "";
 
@@ -210,7 +222,7 @@ function getTanqueFields(item) {
 }
 
 // ===== Submit modal =====
-crudForm.addEventListener("submit", async (e) => {
+crudForm?.addEventListener("submit", async (e) => {
   e.preventDefault();
 
   const resourceKey = crudResource.value;
@@ -227,20 +239,20 @@ crudForm.addEventListener("submit", async (e) => {
 
     if (isCreate) {
       await createItem(url, payload);
-      window.__toast("Creado ✅");
+      window.__toast?.("Creado ✅");
     } else {
       const current = (resourceKey === "tinaco" ? store.tinacos : store.tanques)
         .find(x => String(x.id) === String(id));
 
       await updateById(url, id, { ...current, ...payload });
-      window.__toast("Actualizado ✅");
+      window.__toast?.("Actualizado ✅");
     }
 
-    crudModal.hide();
-    await window.__reload();
+    crudModal?.hide();
+    await window.__reload?.();
   } catch (err) {
     console.error(err);
-    window.__toast(err.message || "Error al guardar ❌");
+    window.__toast?.(err.message || "Error al guardar ❌");
   }
 });
 
@@ -260,21 +272,23 @@ function payloadTanqueFromForm() {
   return { name, nivelTanquePorcentaj, descargaBloqueada, fugaDetectada };
 }
 
-// ===== Simulación (lo que ya tenías) =====
+// ===== Simulación =====
 const sim = { tinaco: new Map(), tanque: new Map() };
 
-function stopInterval(map, id) {
-  const t = map.get(String(id));
+function stopInterval(map, key) {
+  const t = map.get(String(key));
   if (t) clearInterval(t);
-  map.delete(String(id));
+  map.delete(String(key));
 }
-function startInterval(map, id, fn, ms = 900) {
-  stopInterval(map, id);
+
+function startInterval(map, key, fn, ms = 900) {
+  stopInterval(map, key);
   const t = setInterval(fn, ms);
-  map.set(String(id), t);
+  map.set(String(key), t);
 }
 
 window.__sim = {
+  // ===== Tinaco =====
   startTinacoFill: (id) => {
     startInterval(sim.tinaco, id, async () => {
       const cur = store.tinacos.find(x => String(x.id) === String(id));
@@ -303,8 +317,10 @@ window.__sim = {
       }
     }, 900);
   },
+
   stopTinacoFill: (id) => stopInterval(sim.tinaco, id),
 
+  // ===== Tanque =====
   startTanqueFill: (id) => {
     startInterval(sim.tanque, id, async () => {
       const cur = store.tanques.find(x => String(x.id) === String(id));
@@ -332,74 +348,100 @@ window.__sim = {
       }
     }, 900);
   },
+
   stopTanqueFill: (id) => stopInterval(sim.tanque, id),
-  // Deteccion de fuga baja el nivel de la barra
+
+  // ===== Fuga: baja nivel automáticamente =====
   startTanqueLeak: (id) => {
-  startInterval(sim.tanque, `leak-${id}`, async () => {
-    const cur = store.tanques.find(x => String(x.id) === String(id));
-    if (!cur) return stopInterval(sim.tanque, `leak-${id}`);
-    if (!cur.fugaDetectada) return stopInterval(sim.tanque, `leak-${id}`);
+    startInterval(sim.tanque, `leak-${id}`, async () => {
+      const cur = store.tanques.find(x => String(x.id) === String(id));
+      if (!cur) return stopInterval(sim.tanque, `leak-${id}`);
+      if (!cur.fugaDetectada) return stopInterval(sim.tanque, `leak-${id}`);
 
-    const field = ("nivelTanquePorcentaj" in cur) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
-    let nivel = clamp(cur[field] ?? 0, 0, 100);
+      const field = ("nivelTanquePorcentaj" in cur) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
+      let nivel = clamp(cur[field] ?? 0, 0, 100);
+      nivel = clamp(nivel - 2, 0, 100);
 
-    // baja por fuga (ajusta 1,2,3 a tu gusto)
-    nivel = clamp(nivel - 2, 0, 100);
+      const payload = { ...cur, [field]: nivel, actualizadoEn: nowIso() };
 
-    const payload = { ...cur, [field]: nivel, actualizadoEn: nowIso() };
+      try {
+        await updateById(ENDPOINTS.tanque, id, payload);
+        cur[field] = payload[field];
+        cur.actualizadoEn = payload.actualizadoEn;
 
-    try {
-      await updateById(ENDPOINTS.tanque, id, payload);
-      cur[field] = payload[field];
-      cur.actualizadoEn = payload.actualizadoEn;
+        renderCurrent();
+        countAlerts();
 
-      renderCurrent();
-      countAlerts();
+        if (nivel <= 0) stopInterval(sim.tanque, `leak-${id}`);
+      } catch (e) {
+        console.error(e);
+        stopInterval(sim.tanque, `leak-${id}`);
+      }
+    }, 900);
+  },
 
-      if (nivel <= 0) stopInterval(sim.tanque, `leak-${id}`);
-    } catch (e) {
-      console.error(e);
-      stopInterval(sim.tanque, `leak-${id}`);
-    }
-  }, 900);
-},
-
-stopTanqueLeak: (id) => stopInterval(sim.tanque, `leak-${id}`),
-
-startTinacoDrainByTanque: (tanqueId, tinacoId) => {
-  startInterval(sim.tinaco, `drain-${tanqueId}`, async () => {
-    const tin = store.tinacos.find(x => String(x.id) === String(tinacoId));
-    const tan = store.tanques.find(x => String(x.id) === String(tanqueId));
-    if (!tin || !tan) return stopInterval(sim.tinaco, `drain-${tanqueId}`);
-
-    // si el tanque ya no está vacío, detenemos el drenaje
-    const field = ("nivelTanquePorcentaj" in tan) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
-    const tanqueNivel = clamp(tan[field] ?? 0, 0, 100);
-    if (tanqueNivel > 0) return stopInterval(sim.tinaco, `drain-${tanqueId}`);
-
-    let nivelTinaco = clamp(tin.NivelPorcentaje ?? 0, 0, 100);
-    if (nivelTinaco <= 0) return stopInterval(sim.tinaco, `drain-${tanqueId}`);
-
-    // velocidad de consumo (ajústala)
-    nivelTinaco = clamp(nivelTinaco - 1, 0, 100);
-
-    const payload = { ...tin, NivelPorcentaje: nivelTinaco, ActualizadoEn: nowIso() };
-
-    try {
-      await updateById(ENDPOINTS.tinaco, tinacoId, payload);
-      tin.NivelPorcentaje = payload.NivelPorcentaje;
-      tin.ActualizadoEn = payload.ActualizadoEn;
-
-      renderCurrent();
-      countAlerts();
-
-      if (nivelTinaco <= 0) stopInterval(sim.tinaco, `drain-${tanqueId}`);
-    } catch (e) {
-      console.error(e);
-      stopInterval(sim.tinaco, `drain-${tanqueId}`);
-    }
-  }, 900);
-},
-
-stopTinacoDrainByTanque: (tanqueId) => stopInterval(sim.tinaco, `drain-${tanqueId}`),
+  stopTanqueLeak: (id) => stopInterval(sim.tanque, `leak-${id}`),
 };
+
+// ===== Botón: Simular todo =====
+btnSimular?.addEventListener("click", async () => {
+  try {
+    btnSimular.disabled = true;
+    window.__toast?.("Simulación iniciada ⚡");
+
+    // 🔵 1) Modificar tinacos al azar
+    for (const tin of store.tinacos) {
+      const cambio = Math.floor(Math.random() * 30 - 15); // -15..+15
+      const nuevoNivel = clamp((tin.NivelPorcentaje ?? 0) + cambio, 0, 100);
+
+      await updateById(ENDPOINTS.tinaco, tin.id, {
+        ...tin,
+        NivelPorcentaje: nuevoNivel,
+        ActualizadoEn: nowIso(),
+      });
+
+      tin.NivelPorcentaje = nuevoNivel;
+      tin.ActualizadoEn = nowIso();
+    }
+
+    // 🚽 2) Modificar tanques al azar
+    for (const tan of store.tanques) {
+      const field = ("nivelTanquePorcentaj" in tan) ? "nivelTanquePorcentaj" : "nivelTanquePorcentaje";
+      const cambio = Math.floor(Math.random() * 40 - 20); // -20..+20
+      const nuevoNivel = clamp((tan[field] ?? 0) + cambio, 0, 100);
+
+      await updateById(ENDPOINTS.tanque, tan.id, {
+        ...tan,
+        [field]: nuevoNivel,
+        actualizadoEn: nowIso(),
+      });
+
+      tan[field] = nuevoNivel;
+      tan.actualizadoEn = nowIso();
+    }
+
+    // ⚠️ 3) Activar fuga aleatoria en 1 tanque
+    if (store.tanques.length > 0) {
+      const randomTanque = store.tanques[Math.floor(Math.random() * store.tanques.length)];
+
+      await updateById(ENDPOINTS.tanque, randomTanque.id, {
+        ...randomTanque,
+        fugaDetectada: true,
+      });
+
+      randomTanque.fugaDetectada = true;
+
+      // Para que se vea inmediatamente
+      window.__sim?.stopTanqueFill(randomTanque.id);
+      window.__sim?.startTanqueLeak(randomTanque.id);
+    }
+
+    window.__toast?.("Simulación completada ✅");
+    await window.__reload?.();
+  } catch (err) {
+    console.error(err);
+    window.__toast?.("Error en simulación ❌");
+  } finally {
+    btnSimular.disabled = false;
+  }
+});
